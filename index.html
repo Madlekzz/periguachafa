@@ -1,49 +1,116 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sample Home</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <title>PeriFex - Tu tienda de periféricos</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <header class="hero">
+    <!-- Header -->
+    <header class="header">
         <div class="container">
-            <h1>Bienvenido a Periguachafa</h1>
-            <p class="lead">Descubre los mejores perifericos para computadoras aqui.</p>
-            <a href="#features" class="btn btn-custom btn-lg mt-3">Explora aqui papa</a>
+            <div class="logo">
+                <h1>PeriFex</h1>
+            </div>
+            
+            <nav class="nav">
+                <ul>
+                    <li><a href="#inicio">Inicio</a></li>
+                    <li><a href="#productos">Productos</a></li>
+                    <li><a href="#nosotros">Nosotros</a></li>
+                    <li><a href="#contacto">Contacto</a></li>
+                </ul>
+            </nav>
+            
+            <div class="header-actions">
+                <button class="theme-toggle" id="themeToggle">
+                    <i class="fas fa-sun" id="themeIcon"></i>
+                </button>
+                <div class="cart">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count">0</span>
+                </div>
+            </div>
         </div>
     </header>
-    <main>
+
+    <!-- Hero Section -->
+    <section class="hero" id="inicio">
         <div class="container">
-            <section id="features" class="row text-center">
-                <div class="col-md-4">
-                    <div class="feature-box p-4">
-                        <h3>Facil de usar</h3>
-                        <p>Interfaz intuitiva para encontrar lo que buscas rapidamente.</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="feature-box p-4">
-                        <h3>Responsiva</h3>
-                        <p>Se ve vergatario en to lao manito.</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="feature-box p-4">
-                        <h3>Rapido</h3>
-                        <p>Somos optimizadores wannabe que se vieron como correr doom en la lavadora.</p>
-                    </div>
-                </div>
-            </section>
+            <h2>Los mejores periféricos para tu setup</h2>
+            <p>Descubre nuestra selección de teclados, mouse, auriculares y más</p>
+            <button class="cta-button">Ver productos</button>
         </div>
-    </main>
-    <footer>
+    </section>
+
+    <!-- Products Section -->
+    <section class="products" id="productos">
         <div class="container">
-            <p>&copy; 2025 Periguachafa. Todos los derechos reservados (no tengo derechos. Soy negro).</p>
+            <h2>Nuestros Productos</h2>
+            
+            <div class="filters">
+                <button class="filter-btn active" data-category="all">Todos</button>
+                <button class="filter-btn" data-category="teclados">Teclados</button>
+                <button class="filter-btn" data-category="mouse">Mouse</button>
+                <button class="filter-btn" data-category="auriculares">Auriculares</button>
+                <button class="filter-btn" data-category="monitores">Monitores</button>
+            </div>
+
+            <div class="products-grid" id="productsGrid">
+                <!-- Products will be loaded here by JavaScript -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Shopping Cart Modal -->
+    <div class="cart-modal" id="cartModal">
+        <div class="cart-content">
+            <div class="cart-header">
+                <h3>Carrito de Compras</h3>
+                <button class="close-cart" id="closeCart">&times;</button>
+            </div>
+            <div class="cart-items" id="cartItems">
+                <!-- Cart items will be loaded here -->
+            </div>
+            <div class="cart-footer">
+                <div class="cart-total">
+                    <strong>Total: $<span id="cartTotal">0</span></strong>
+                </div>
+                <button class="checkout-btn">Finalizar Compra</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>PeriFex</h3>
+                    <p>Tu tienda confiable para periféricos de computadora</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Enlaces rápidos</h4>
+                    <ul>
+                        <li><a href="#inicio">Inicio</a></li>
+                        <li><a href="#productos">Productos</a></li>
+                        <li><a href="#nosotros">Nosotros</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contacto</h4>
+                    <p>Email: info@perifex.com</p>
+                    <p>Tel: +58 414-569-8900</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 PeriFex. Todos los derechos reservados.</p>
+            </div>
         </div>
     </footer>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="script.js"></script>
 </body>
 </html>
