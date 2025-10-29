@@ -1,116 +1,132 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PeriFex - Tu tienda de periféricos</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body>
     <!-- Header -->
     <header class="header">
-        <div class="container">
-            <div class="logo">
-                <h1>PeriFex</h1>
-            </div>
-            
-            <nav class="nav">
-                <ul>
-                    <li><a href="#inicio">Inicio</a></li>
-                    <li><a href="#productos">Productos</a></li>
-                    <li><a href="#nosotros">Nosotros</a></li>
-                    <li><a href="#contacto">Contacto</a></li>
-                </ul>
-            </nav>
-            
-            <div class="header-actions">
-                <button class="theme-toggle" id="themeToggle">
-                    <i class="fas fa-sun" id="themeIcon"></i>
-                </button>
-                <div class="cart">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span class="cart-count">0</span>
-                </div>
-            </div>
+      <div class="container">
+        <div class="logo">
+          <h1>PeriFex</h1>
         </div>
+
+        <nav class="nav">
+          <ul>
+            <li><a href="#inicio">Inicio</a></li>
+            <li><a href="#productos">Productos</a></li>
+            <li><a href="./nosotros.html">Nosotros</a></li>
+            <li><a href="./contacto.html">Contacto</a></li>
+          </ul>
+        </nav>
+
+        <div class="header-actions">
+          <button class="theme-toggle" id="themeToggle">
+            <i class="fas fa-sun" id="themeIcon"></i>
+          </button>
+          <div class="cart">
+            <i class="fas fa-shopping-cart"></i>
+            <span class="cart-count">0</span>
+          </div>
+        </div>
+      </div>
     </header>
 
-    <!-- Hero Section -->
-    <section class="hero" id="inicio">
-        <div class="container">
-            <h2>Los mejores periféricos para tu setup</h2>
-            <p>Descubre nuestra selección de teclados, mouse, auriculares y más</p>
-            <button class="cta-button">Ver productos</button>
-        </div>
+    <!-- Hero Carousel Section -->
+    <section class="hero-carousel" id="inicio">
+      <div class="carousel-container" id="carouselContainer">
+        <!-- Carousel slides will be loaded here by JavaScript -->
+      </div>
+      <div class="carousel-nav">
+        <button class="carousel-btn" id="prevBtn">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <button class="carousel-btn" id="nextBtn">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+      <div class="carousel-dots" id="carouselDots">
+        <!-- Carousel dots will be loaded here by JavaScript -->
+      </div>
     </section>
 
     <!-- Products Section -->
     <section class="products" id="productos">
-        <div class="container">
-            <h2>Nuestros Productos</h2>
-            
-            <div class="filters">
-                <button class="filter-btn active" data-category="all">Todos</button>
-                <button class="filter-btn" data-category="teclados">Teclados</button>
-                <button class="filter-btn" data-category="mouse">Mouse</button>
-                <button class="filter-btn" data-category="auriculares">Auriculares</button>
-                <button class="filter-btn" data-category="monitores">Monitores</button>
-            </div>
+      <div class="container">
+        <h2>Nuestros Productos</h2>
 
-            <div class="products-grid" id="productsGrid">
-                <!-- Products will be loaded here by JavaScript -->
-            </div>
+        <div class="filters">
+          <button class="filter-btn active" data-category="all">Todos</button>
+          <button class="filter-btn" data-category="teclados">Teclados</button>
+          <button class="filter-btn" data-category="mouse">Mouse</button>
+          <button class="filter-btn" data-category="auriculares">
+            Auriculares
+          </button>
+          <button class="filter-btn" data-category="monitores">
+            Monitores
+          </button>
         </div>
+
+        <div class="products-grid" id="productsGrid">
+          <!-- Products will be loaded here by JavaScript -->
+        </div>
+      </div>
     </section>
 
     <!-- Shopping Cart Modal -->
     <div class="cart-modal" id="cartModal">
-        <div class="cart-content">
-            <div class="cart-header">
-                <h3>Carrito de Compras</h3>
-                <button class="close-cart" id="closeCart">&times;</button>
-            </div>
-            <div class="cart-items" id="cartItems">
-                <!-- Cart items will be loaded here -->
-            </div>
-            <div class="cart-footer">
-                <div class="cart-total">
-                    <strong>Total: $<span id="cartTotal">0</span></strong>
-                </div>
-                <button class="checkout-btn">Finalizar Compra</button>
-            </div>
+      <div class="cart-content">
+        <div class="cart-header">
+          <h3>Carrito de Compras</h3>
+          <button class="close-cart" id="closeCart">&times;</button>
         </div>
+        <div class="cart-items" id="cartItems">
+          <!-- Cart items will be loaded here -->
+        </div>
+        <div class="cart-footer">
+          <div class="cart-total">
+            <strong>Total: $<span id="cartTotal">0</span></strong>
+          </div>
+          <button class="checkout-btn">Finalizar Compra</button>
+        </div>
+      </div>
     </div>
 
     <!-- Footer -->
     <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>PeriFex</h3>
-                    <p>Tu tienda confiable para periféricos de computadora</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Enlaces rápidos</h4>
-                    <ul>
-                        <li><a href="#inicio">Inicio</a></li>
-                        <li><a href="#productos">Productos</a></li>
-                        <li><a href="#nosotros">Nosotros</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Contacto</h4>
-                    <p>Email: info@perifex.com</p>
-                    <p>Tel: +58 414-569-8900</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 PeriFex. Todos los derechos reservados.</p>
-            </div>
+      <div class="container">
+        <div class="footer-content">
+          <div class="footer-section">
+            <h3>PeriFex</h3>
+            <p>Tu tienda confiable para periféricos de computadora</p>
+          </div>
+          <div class="footer-section">
+            <h4>Enlaces rápidos</h4>
+            <ul>
+              <li><a href="#inicio">Inicio</a></li>
+              <li><a href="#productos">Productos</a></li>
+              <li><a href="#nosotros">Nosotros</a></li>
+            </ul>
+          </div>
+          <div class="footer-section">
+            <h4>Contacto</h4>
+            <p>Email: info@perifex.com</p>
+            <p>Tel: +58 414-569-8900</p>
+          </div>
         </div>
+        <div class="footer-bottom">
+          <p>&copy; 2025 PeriFex. Todos los derechos reservados.</p>
+        </div>
+      </div>
     </footer>
 
     <script src="script.js"></script>
-</body>
+  </body>
 </html>

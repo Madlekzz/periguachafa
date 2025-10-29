@@ -11,7 +11,7 @@ const products = [
   {
     id: 2,
     name: "Razer Viper V3 PRO",
-    description: "Mouse óptico, Wireless 8khz Polling Rate <br><br/>",
+    description: "Mouse óptico, Wireless 8khz Polling Rate<br><br/>",
     price: 169.99,
     category: "mouse",
     image: "./images/mouse.png",
@@ -43,7 +43,7 @@ const products = [
   {
     id: 6,
     name: "Logitech G Pro Superlight",
-    description: "Mouse Wireless 4khz Polling Rate",
+    description: "Mouse Wireless 4khz Polling Rate<br><br/>",
     price: 110.0,
     category: "mouse",
     image: "./images/LOGITECH.png",
@@ -51,13 +51,64 @@ const products = [
   {
     id: 7,
     name: "Razer Kraken V3 X",
-    description: "Auriculares alambricos 7.1",
+    description: "Auriculares alambricos 7.1<br><br/>",
     price: 49.99,
     category: "auriculares",
     image: "./images/HEADPHONES RAZER.png",
   },
   {
     id: 8,
+    name: "JEMIP WARPEN GAMING 24.5",
+    description: "Monitor Full HD de 24 pulgadas ideal para videojuegos",
+    price: 149.99,
+    category: "monitores",
+    image: "./images/MONITOR JEMIP.png",
+  },
+];
+
+const bestSellers = [
+  {
+    id: 1,
+    name: "Razer Viper V3 PRO",
+    description: "Mouse óptico, Wireless 8khz Polling Rate",
+    price: 169.99,
+    category: "mouse",
+    image: "./images/mouse.png",
+  },
+  {
+    id: 2,
+    name: "HyperX Cloud Alpha",
+    description: "Auriculares con sonido 7.1 y micrófono noise-cancelling",
+    price: 120.0,
+    category: "auriculares",
+    image: "./images/HEADPHONES.png",
+  },
+  {
+    id: 3,
+    name: "Zowie XL2586",
+    description: "Monitor gaming de 27 pulgadas Fast-TN 600hz Refresh Rate",
+    price: 1200.0,
+    category: "monitores",
+    image: "./images/monitor.png",
+  },
+  {
+    id: 4,
+    name: "Logitech G Pro Superlight",
+    description: "Mouse Wireless 4khz Polling Rate",
+    price: 110.0,
+    category: "mouse",
+    image: "./images/LOGITECH.png",
+  },
+  {
+    id: 5,
+    name: "Razer Kraken V3 X ",
+    description: "Auriculares alambricos 7.1",
+    price: 49.99,
+    category: "auriculares",
+    image: "./images/HEADPHONES RAZER.png",
+  },
+  {
+    id: 6,
     name: "JEMIP WARPEN GAMING 24.5 Pulgadas 180hz",
     description: "Monitor Full HD de 24 pulgadas ideal para videojuegos",
     price: 149.99,
@@ -69,14 +120,89 @@ const products = [
 // Variables globales
 let cart = [];
 let currentTheme = localStorage.getItem("theme") || "light";
+let currentSlide = 0;
+let carouselInterval;
 
 // Inicialización
 document.addEventListener("DOMContentLoaded", function () {
   initializeTheme();
+  initializeCarousel();
   renderProducts("all");
   setupEventListeners();
   updateCartCount();
 });
+
+// Función para inicializar el carousel
+function initializeCarousel() {
+  const carouselContainer = document.getElementById("carouselContainer");
+  const carouselDots = document.getElementById("carouselDots");
+
+  // Crear slides para cada producto
+  bestSellers.forEach((product, index) => {
+    const slide = document.createElement("div");
+    slide.className = `carousel-slide ${index === 0 ? "active" : ""}`;
+    slide.innerHTML = `
+      <img src="${product.image}" alt="${product.name}">
+      <div class="carousel-content">
+        <h2>${product.name}</h2>
+        <p>${product.description}</p>
+      </div>
+    `;
+    carouselContainer.appendChild(slide);
+
+    // Crear dots para navegación
+    const dot = document.createElement("button");
+    dot.className = `carousel-dot ${index === 0 ? "active" : ""}`;
+    dot.addEventListener("click", () => goToSlide(index));
+    carouselDots.appendChild(dot);
+  });
+
+  // Iniciar rotación automática
+  startCarousel();
+}
+
+// Función para ir a un slide específico
+function goToSlide(slideIndex) {
+  const slides = document.querySelectorAll(".carousel-slide");
+  const dots = document.querySelectorAll(".carousel-dot");
+
+  // Remover clase active de todos los slides y dots
+  slides.forEach((slide) => slide.classList.remove("active"));
+  dots.forEach((dot) => dot.classList.remove("active"));
+
+  // Agregar clase active al slide y dot actual
+  slides[slideIndex].classList.add("active");
+  dots[slideIndex].classList.add("active");
+
+  currentSlide = slideIndex;
+
+  // Reiniciar el intervalo
+  resetCarousel();
+}
+
+// Función para ir al siguiente slide
+function nextSlide() {
+  const nextSlideIndex = (currentSlide + 1) % bestSellers.length;
+  goToSlide(nextSlideIndex);
+}
+
+// Función para ir al slide anterior
+function prevSlide() {
+  const prevSlideIndex =
+    (currentSlide - 1 + bestSellers.length) % bestSellers.length;
+  goToSlide(prevSlideIndex);
+}
+
+// Función para iniciar la rotación automática
+function startCarousel() {
+  carouselInterval = setInterval(nextSlide, 5000); // Cambiar cada 5 segundos
+}
+
+// Función para reiniciar el carousel
+function resetCarousel() {
+  clearInterval(carouselInterval);
+  startCarousel();
+}
 
 // Función para inicializar el tema
 function initializeTheme() {
@@ -177,7 +303,7 @@ function renderProducts(filters = {}) {
       (product) => `
         <div class="product-card">
             <div class="product-image">
-                <img src="${product.image}" alt="${product.name}" class="product-image">
+                <img src="${product.image}" alt="${product.name}">
             </div>
             <div class="product-info">
                 <h3 class="product-title">${product.name}</h3>
@@ -246,7 +372,7 @@ function showCart() {
         (item) => `
             <div class="cart-item">
                 <div class="cart-item-image">
-                <img src="${item.image}" alt="${item.name}" class="cart-item-image">
+                    <img src="${item.image}" alt="${item.name}">
                 </div>
                 <div class="cart-item-info">
                     <div class="cart-item-title">${item.name}</div>
@@ -360,26 +486,39 @@ function setupEventListeners() {
       }
     });
 
-  // CTA Button
-  document.querySelector(".cta-button").addEventListener("click", function () {
-    document.getElementById("productos").scrollIntoView({ behavior: "smooth" });
-  });
+  // Botones del carousel
+  document.getElementById("prevBtn").addEventListener("click", prevSlide);
+  document.getElementById("nextBtn").addEventListener("click", nextSlide);
+
+  // Pausar carousel al pasar el mouse
+  document
+    .querySelector(".hero-carousel")
+    .addEventListener("mouseenter", () => {
+      clearInterval(carouselInterval);
+    });
+
+  // Reanudar carousel al quitar el mouse
+  document
+    .querySelector(".hero-carousel")
+    .addEventListener("mouseleave", () => {
+      startCarousel();
+    });
 }
 
 // Función para mostrar notificaciones
 function showNotification(message) {
   const notification = document.createElement("div");
   notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background-color: var(--primary-color);
-        color: white;
-        padding: 1rem 2rem;
-        border-radius: 5px;
-        z-index: 3000;
-        animation: slideIn 0.3s ease;
-    `;
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background-color: var(--primary-color);
+      color: white;
+      padding: 1rem 2rem;
+      border-radius: 5px;
+      z-index: 3000;
+      animation: slideIn 0.3s ease;
+  `;
   notification.textContent = message;
 
   document.body.appendChild(notification);
@@ -388,22 +527,6 @@ function showNotification(message) {
     notification.remove();
   }, 3000);
 }
-
-// Agregar animación CSS
-const style = document.createElement("style");
-style.textContent = `
-    @keyframes slideIn {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-`;
-document.head.appendChild(style);
 
 // Seleccionar el header
 const header = document.querySelector(".header");

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contacto - PeriFex</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <header class="header">
+      <div class="container">
+        <div class="logo">
+          <h1>PeriFex</h1>
+        </div>
+
+        <nav class="nav">
+          <ul>
+            <li><a href="index.html">Inicio</a></li>
+            <li><a href="index.html#productos">Productos</a></li>
+            <li><a href="nosotros.html">Nosotros</a></li>
+            <li><a href="contacto.html" class="active">Contacto</a></li>
+          </ul>
+        </nav>
+
+        <div class="header-actions">
+          <button class="theme-toggle" id="themeToggle">
+            <i class="fas fa-sun" id="themeIcon"></i>
+          </button>
+          <div class="cart">
+            <i class="fas fa-shopping-cart"></i>
+            <span class="cart-count">0</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="contact-page" id="contacto">
+      <div class="container">
+        <h2>Contáctanos</h2>
+        <p>Estamos aquí para responder tus preguntas y comentarios.</p>
+
+        <div class="contact-grid">
+          <div class="contact-info">
+            <h3>Información de la Tienda</h3>
+            <p><i class="fas fa-envelope"></i> Email: info@perifex.com</p>
+            <p><i class="fas fa-phone"></i> Teléfono: +58 414-569-8900</p>
+            <p>
+              <i class="fas fa-map-marker-alt"></i> Dirección: Av. Principal,
+              Edificio Isla Dorada, Piso 1, Maracaibo, Venezuela.
+            </p>
+            <p>
+              <i class="fas fa-clock"></i> Horario: Lunes a Viernes, 9:00 AM -
+              5:00 PM (GMT-4)
+            </p>
+
+            <h3>Síguenos</h3>
+            <div class="social-links">
+              <a href="#" target="_blank"><i class="fab fa-facebook-f"></i></a>
+              <a href="#" target="_blank"><i class="fab fa-twitter"></i></a>
+              <a href="#" target="_blank"><i class="fab fa-instagram"></i></a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="cart-modal" id="cartModal">
+      <div class="cart-content">
+        <div class="cart-header">
+          <h3>Carrito de Compras</h3>
+          <button class="close-cart" id="closeCart">&times;</button>
+        </div>
+        <div class="cart-items" id="cartItems"></div>
+        <div class="cart-footer">
+          <div class="cart-total">
+            <strong>Total: $<span id="cartTotal">0</span></strong>
+          </div>
+          <button class="checkout-btn">Finalizar Compra</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-content">
+          <div class="footer-section">
+            <h3>PeriFex</h3>
+            <p>Tu tienda confiable para periféricos de computadora</p>
+          </div>
+          <div class="footer-section">
+            <h4>Enlaces rápidos</h4>
+            <ul>
+              <li><a href="index.html">Inicio</a></li>
+              <li><a href="index.html#productos">Productos</a></li>
+              <li><a href="nosotros.html">Nosotros</a></li>
+            </ul>
+          </div>
+          <div class="footer-section">
+            <h4>Contacto</h4>
+            <p>Email: info@perifex.com</p>
+            <p>Tel: +58 414-569-8900</p>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2025 PeriFex. Todos los derechos reservados.</p>
+        </div>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
