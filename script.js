@@ -1704,3 +1704,819 @@ if (!document.getElementById("checkoutModal")) {
   `;
   document.body.appendChild(checkoutModal);
 }
+
+// Sistema de Historial de Compras
+const PurchaseHistory = {
+  // Obtener historial de compras del usuario actual
+  getPurchaseHistory() {
+    const user = AuthSystem.getCurrentUser();
+    if (!user) return [];
+
+    const userPurchases =
+      JSON.parse(localStorage.getItem("userPurchases")) || {};
+    return userPurchases[user.id] || [];
+  },
+
+  // Agregar una compra al historial del usuario
+  addPurchase(purchaseData) {
+    const user = AuthSystem.getCurrentUser();
+    if (!user) return null;
+
+    const userPurchases =
+      JSON.parse(localStorage.getItem("userPurchases")) || {};
+
+    const purchase = {
+      id: `purchase_${Date.now()}`,
+      userId: user.id,
+      date: new Date().toISOString(),
+      items: purchaseData.items,
+      total: purchaseData.total,
+      paymentMethod: purchaseData.paymentMethod,
+      status: "completed",
+      shippingAddress: purchaseData.shippingAddress || {},
+    };
+
+    if (!userPurchases[user.id]) {
+      userPurchases[user.id] = [];
+    }
+
+    userPurchases[user.id].unshift(purchase); // Agregar al inicio del array
+    localStorage.setItem("userPurchases", JSON.stringify(userPurchases));
+
+    return purchase;
+  },
+
+  // Obtener una compra específica por ID
+  getPurchaseById(purchaseId) {
+    const user = AuthSystem.getCurrentUser();
+    if (!user) return null;
+
+    const userPurchases =
+      JSON.parse(localStorage.getItem("userPurchases")) || {};
+    const purchases = userPurchases[user.id] || [];
+
+    return purchases.find((purchase) => purchase.id === purchaseId);
+  },
+
+  // Obtener estadísticas del usuario
+  getUserStats() {
+    const purchases = this.getPurchaseHistory();
+
+    return {
+      totalPurchases: purchases.length,
+      totalSpent: purchases.reduce((sum, purchase) => sum + purchase.total, 0),
+      lastPurchase: purchases.length > 0 ? purchases[0].date : null,
+      favoriteCategory: this.getFavoriteCategory(purchases),
+    };
+  },
+
+  // Obtener categoría favorita del usuario
+  getFavoriteCategory(purchases) {
+    if (purchases.length === 0) return "Ninguna";
+
+    const categoryCount = {};
+    purchases.forEach((purchase) => {
+      purchase.items.forEach((item) => {
+        categoryCount[item.category] =
+          (categoryCount[item.category] || 0) + item.quantity;
+      });
+    });
+
+    const favorite = Object.entries(categoryCount).reduce(
+      (max, [category, count]) => {
+        return count > max.count ? { category, count } : max;
+      },
+      { category: "", count: 0 }
+    );
+
+    return favorite.category || "Ninguna";
+  },
+};
+
+// Modificar la función processPayment para guardar el historial
+async function processPayment() {
+  const payButton = document.getElementById("payButton");
+  const originalText = payButton.innerHTML;
+
+  try {
+    // Mostrar loading
+    payButton.innerHTML =
+      '<i class="fas fa-spinner fa-spin"></i> Procesando pago...';
+    payButton.disabled = true;
+
+    const totalAmount = cart.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+
+    // Obtener datos de la tarjeta para simular mejor
+    const cardNumber = document
+      .getElementById("cardNumber")
+      .value.replace(/\s/g, "");
+    const cardLast4 = cardNumber.slice(-4);
+
+    // Simular procesamiento de pago
+    const paymentResult = await StripeSimulator.processPayment(
+      {
+        last4: cardLast4,
+        brand: getCardBrand(cardNumber),
+      },
+      totalAmount
+    );
+
+    // Guardar en el historial de compras
+    const purchaseData = {
+      items: [...cart], // Copia del carrito
+      total: totalAmount,
+      paymentMethod: {
+        brand: getCardBrand(cardNumber),
+        last4: cardLast4,
+      },
+      shippingAddress: {
+        // En una aplicación real, estos datos vendrían de un formulario
+        name: AuthSystem.getCurrentUser().name,
+        email: AuthSystem.getCurrentUser().email,
+      },
+    };
+
+    const purchase = PurchaseHistory.addPurchase(purchaseData);
+
+    // Pago exitoso
+    showNotification("¡Pago exitoso! Tu pedido ha sido procesado.");
+    closeCheckout();
+
+    // Limpiar carrito
+    cart = [];
+    updateCartCount();
+    document.getElementById("cartModal").style.display = "none";
+
+    // Mostrar recibo
+    setTimeout(() => {
+      showReceipt(paymentResult, purchase);
+    }, 1000);
+  } catch (error) {
+    showNotification(error.message);
+    payButton.innerHTML = originalText;
+    payButton.disabled = false;
+  }
+}
+
+// Modificar showReceipt para incluir información de la compra
+function showReceipt(paymentResult, purchase) {
+  const receiptModal = document.createElement("div");
+  receiptModal.className = "modal";
+  receiptModal.style.cssText = `
+    display: flex;
+    position: fixed;
+    z-index: 4000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+  `;
+
+  receiptModal.innerHTML = `
+    <div class="modal-content" style="background: var(--card-bg); padding: 2rem; border-radius: 10px; max-width: 500px; width: 90%; border: 1px solid var(--border-color);">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <div style="font-size: 3rem; color: #28a745; margin-bottom: 1rem;">✅</div>
+        <h2 style="color: var(--text-color); margin-bottom: 1rem;">¡Pago Completado!</h2>
+        <p style="color: var(--secondary-color);">Tu pedido ha sido procesado exitosamente</p>
+      </div>
+      
+      <div style="background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+          <span>ID de transacción:</span>
+          <span style="font-family: monospace;">${paymentResult.id}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+          <span>ID de compra:</span>
+          <span style="font-family: monospace;">${purchase.id}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+          <span>Total pagado:</span>
+          <span style="font-weight: bold;">$${paymentResult.amount.toFixed(
+            2
+          )}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>Estado:</span>
+          <span style="color: #28a745;">${paymentResult.status}</span>
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 1rem;">
+        <button onclick="this.closest('.modal').remove()" 
+                style="flex: 1; padding: 1rem; background: var(--primary-color); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem;">
+          Continuar Comprando
+        </button>
+        <button onclick="showPurchaseHistory(); this.closest('.modal').remove()" 
+                style="flex: 1; padding: 1rem; background: rgba(255,255,255,0.1); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 5px; cursor: pointer; font-size: 1rem;">
+          Ver Historial
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(receiptModal);
+}
+
+// Función para mostrar el perfil e historial de compras
+function showUserProfile() {
+  const user = AuthSystem.getCurrentUser();
+  if (!user) return;
+
+  const profileModal =
+    document.getElementById("profileModal") || createProfileModal();
+  const profileContent = document.getElementById("profileContent");
+
+  const purchaseHistory = PurchaseHistory.getPurchaseHistory();
+  const userStats = PurchaseHistory.getUserStats();
+
+  profileContent.innerHTML = `
+    <div class="profile-header">
+      <h2>Mi Perfil</h2>
+      <button class="close-profile" onclick="closeProfileModal()">&times;</button>
+    </div>
+    
+    <div class="profile-body">
+      <div class="user-info-section">
+        <div class="user-avatar">
+          <i class="fas fa-user-circle"></i>
+        </div>
+        <div class="user-details">
+          <h3>${user.name}</h3>
+          <p>${user.email}</p>
+          <p class="member-since">Miembro desde: ${new Date(
+            user.createdAt
+          ).toLocaleDateString()}</p>
+        </div>
+      </div>
+
+      <div class="stats-section">
+        <h3>Estadísticas de Compras</h3>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">🛒</div>
+            <div class="stat-info">
+              <div class="stat-number">${userStats.totalPurchases}</div>
+              <div class="stat-label">Compras Totales</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+              <div class="stat-number">$${userStats.totalSpent.toFixed(2)}</div>
+              <div class="stat-label">Total Gastado</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">⭐</div>
+            <div class="stat-info">
+              <div class="stat-number">${userStats.favoriteCategory}</div>
+              <div class="stat-label">Categoría Favorita</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="purchase-history-section">
+        <div class="section-header">
+          <h3>Historial de Compras</h3>
+          <span class="purchase-count">${purchaseHistory.length} compras</span>
+        </div>
+        
+        ${
+          purchaseHistory.length === 0
+            ? `
+          <div class="no-purchases">
+            <i class="fas fa-shopping-bag"></i>
+            <p>Aún no has realizado ninguna compra</p>
+            <button class="start-shopping-btn" onclick="closeProfileModal()">Comenzar a Comprar</button>
+          </div>
+        `
+            : `
+          <div class="purchases-list">
+            ${purchaseHistory
+              .map(
+                (purchase) => `
+              <div class="purchase-item" onclick="showPurchaseDetails('${
+                purchase.id
+              }')">
+                <div class="purchase-header">
+                  <div class="purchase-id">Orden #${purchase.id.slice(-8)}</div>
+                  <div class="purchase-date">${new Date(
+                    purchase.date
+                  ).toLocaleDateString()}</div>
+                </div>
+                <div class="purchase-details">
+                  <div class="purchase-items">
+                    ${purchase.items
+                      .slice(0, 2)
+                      .map(
+                        (item) => `
+                      <span class="item-name">${item.name} x${item.quantity}</span>
+                    `
+                      )
+                      .join("")}
+                    ${
+                      purchase.items.length > 2
+                        ? `<span class="more-items">+${
+                            purchase.items.length - 2
+                          } más</span>`
+                        : ""
+                    }
+                  </div>
+                  <div class="purchase-total">$${purchase.total.toFixed(
+                    2
+                  )}</div>
+                </div>
+                <div class="purchase-status ${purchase.status}">
+                  <i class="fas fa-check-circle"></i>
+                  ${purchase.status}
+                </div>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        `
+        }
+      </div>
+    </div>
+  `;
+
+  profileModal.style.display = "block";
+}
+
+// Función para mostrar detalles específicos de una compra
+function showPurchaseDetails(purchaseId) {
+  const purchase = PurchaseHistory.getPurchaseById(purchaseId);
+  if (!purchase) return;
+
+  const detailsModal = document.createElement("div");
+  detailsModal.className = "modal";
+  detailsModal.style.cssText = `
+    display: flex;
+    position: fixed;
+    z-index: 4000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+  `;
+
+  detailsModal.innerHTML = `
+    <div class="modal-content" style="background: var(--card-bg); padding: 2rem; border-radius: 10px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; border: 1px solid var(--border-color);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h2 style="color: var(--text-color); margin: 0;">Detalles de la Compra</h2>
+        <button onclick="this.closest('.modal').remove()" style="background: none; border: none; font-size: 1.5rem; color: var(--secondary-color); cursor: pointer;">&times;</button>
+      </div>
+      
+      <div style="background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <strong>ID de Compra:</strong>
+            <div style="font-family: monospace; font-size: 0.9rem;">${
+              purchase.id
+            }</div>
+          </div>
+          <div>
+            <strong>Fecha:</strong>
+            <div>${new Date(purchase.date).toLocaleString()}</div>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div>
+            <strong>Estado:</strong>
+            <div style="color: #28a745;"><i class="fas fa-check-circle"></i> ${
+              purchase.status
+            }</div>
+          </div>
+          <div>
+            <strong>Método de Pago:</strong>
+            <div>${purchase.paymentMethod.brand} •••• ${
+    purchase.paymentMethod.last4
+  }</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <h3 style="color: var(--text-color); margin-bottom: 1rem;">Productos Comprados</h3>
+        <div style="background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden;">
+          ${purchase.items
+            .map(
+              (item) => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+              <div style="display: flex; align-items: center; gap: 1rem;">
+                <img src="${item.image}" alt="${
+                item.name
+              }" style="width: 50px; height: 50px; object-fit: contain; border-radius: 5px;">
+                <div>
+                  <div style="font-weight: bold;">${item.name}</div>
+                  <div style="font-size: 0.9rem; color: var(--secondary-color);">Cantidad: ${
+                    item.quantity
+                  }</div>
+                </div>
+              </div>
+              <div style="font-weight: bold;">$${(
+                item.price * item.quantity
+              ).toFixed(2)}</div>
+            </div>
+          `
+            )
+            .join("")}
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 2px solid var(--primary-color);">
+        <strong style="font-size: 1.2rem;">Total:</strong>
+        <strong style="font-size: 1.2rem;">$${purchase.total.toFixed(
+          2
+        )}</strong>
+      </div>
+
+      <button onclick="this.closest('.modal').remove()" 
+              style="width: 100%; padding: 1rem; background: var(--primary-color); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; margin-top: 1.5rem;">
+        Cerrar
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(detailsModal);
+}
+
+// Función para crear el modal de perfil
+function createProfileModal() {
+  const profileModal = document.createElement("div");
+  profileModal.id = "profileModal";
+  profileModal.className = "profile-modal";
+  profileModal.innerHTML = `
+    <div class="profile-content">
+      <div id="profileContent"></div>
+    </div>
+  `;
+  document.body.appendChild(profileModal);
+  return profileModal;
+}
+
+// Función para cerrar el modal de perfil
+function closeProfileModal() {
+  const profileModal = document.getElementById("profileModal");
+  if (profileModal) {
+    profileModal.style.display = "none";
+  }
+}
+
+// Modificar updateAuthUI para incluir el botón de perfil
+function updateAuthUI() {
+  const user = AuthSystem.getCurrentUser();
+  const authButton = document.getElementById("authButton");
+
+  if (!authButton) {
+    createAuthButton();
+    return;
+  }
+
+  if (user) {
+    authButton.innerHTML = `
+      <i class="fas fa-user"></i>
+      ${user.name}
+      <div class="auth-dropdown">
+        <button onclick="showUserProfile()"><i class="fas fa-user-circle"></i> Mi Perfil</button>
+        <button onclick="showPurchaseHistory()"><i class="fas fa-history"></i> Historial</button>
+        <button onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</button>
+      </div>
+    `;
+    authButton.classList.add("logged-in");
+  } else {
+    authButton.innerHTML = '<i class="fas fa-user"></i> Iniciar Sesión';
+    authButton.classList.remove("logged-in");
+  }
+}
+
+// Función para mostrar solo el historial de compras
+function showPurchaseHistory() {
+  closeProfileModal(); // Cerrar perfil si está abierto
+  showUserProfile(); // Abrir perfil que incluye el historial
+}
+
+// Agregar estilos CSS para el perfil e historial
+const profileStyles = document.createElement("style");
+profileStyles.textContent = `
+  .profile-modal {
+    display: none;
+    position: fixed;
+    z-index: 3500;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+    backdrop-filter: blur(5px);
+  }
+
+  .profile-content {
+    background: var(--card-bg);
+    margin: 2% auto;
+    padding: 0;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(20px);
+  }
+
+  .profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .profile-header h2 {
+    margin: 0;
+    color: var(--text-color);
+  }
+
+  .close-profile {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: var(--secondary-color);
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .profile-body {
+    padding: 2rem;
+  }
+
+  .user-info-section {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .user-avatar {
+    font-size: 4rem;
+    color: var(--primary-color);
+  }
+
+  .user-details h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-color);
+    font-size: 1.5rem;
+  }
+
+  .user-details p {
+    margin: 0.25rem 0;
+    color: var(--secondary-color);
+  }
+
+  .member-since {
+    font-size: 0.9rem;
+    opacity: 0.8;
+  }
+
+  .stats-section {
+    margin-bottom: 2rem;
+  }
+
+  .stats-section h3 {
+    margin-bottom: 1rem;
+    color: var(--text-color);
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+
+  .stat-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1.5rem;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .stat-icon {
+    font-size: 2rem;
+    opacity: 0.8;
+  }
+
+  .stat-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--text-color);
+  }
+
+  .stat-label {
+    font-size: 0.9rem;
+    color: var(--secondary-color);
+  }
+
+  .purchase-history-section {
+    margin-top: 2rem;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .section-header h3 {
+    margin: 0;
+    color: var(--text-color);
+  }
+
+  .purchase-count {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+
+  .no-purchases {
+    text-align: center;
+    padding: 3rem;
+    color: var(--secondary-color);
+  }
+
+  .no-purchases i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+
+  .start-shopping-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 1rem;
+  }
+
+  .purchases-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .purchase-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .purchase-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+    border-color: var(--primary-color);
+  }
+
+  .purchase-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .purchase-id {
+    font-weight: bold;
+    color: var(--text-color);
+  }
+
+  .purchase-date {
+    color: var(--secondary-color);
+    font-size: 0.9rem;
+  }
+
+  .purchase-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .purchase-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .item-name {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+  }
+
+  .more-items {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+  }
+
+  .purchase-total {
+    font-weight: bold;
+    color: var(--text-color);
+    font-size: 1.1rem;
+  }
+
+  .purchase-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+
+  .purchase-status.completed {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.3);
+  }
+
+  .auth-dropdown button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    padding: 0.5rem 1rem;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.3s ease;
+  }
+
+  .auth-dropdown button:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  @media (max-width: 768px) {
+    .profile-content {
+      margin: 5% auto;
+      width: 95%;
+    }
+
+    .user-info-section {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .purchase-details {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .purchase-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+  }
+`;
+document.head.appendChild(profileStyles);
