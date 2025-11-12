@@ -3,7 +3,7 @@
   --bg-color: #ffffff;
   --text-color: #333333;
   --header-bg: #f8f9fa;
-  --card-bg: rgba(255, 255, 255, 0.05);
+  --card-bg: rgba(255, 255, 255, 0.2);
   --border-color: #e0e0e0;
   --primary-color: #007bff;
   --secondary-color: #6c757d;
@@ -87,14 +87,20 @@ body {
 }
 
 .nav a {
+  color: var(--primary-color);
   text-decoration: none;
-  color: var(--text-color);
-  font-weight: 500;
-  transition: color 0.3s ease;
+  padding: 5px 15px;
+  display: inline-block;
+  transition: all 0.3s ease;
+  border-radius: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  border: 2px solid transparent;
 }
 
 .nav a:hover {
   color: var(--primary-color);
+  border: 2px solid var(--primary-color);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
 }
 
 .header-actions {
@@ -328,6 +334,7 @@ body {
   box-shadow: var(--shadow);
   transition: transform 0.3s ease;
   border: 1px solid var(--border-color);
+  backdrop-filter: blur(20px);
 }
 
 .product-card:hover {
