@@ -172,26 +172,68 @@ const StripeSimulator = {
       }, 2000);
     });
   },
+};
 
-  // Simular elementos de Stripe para tarjeta
-  createCardElement() {
-    const element = document.createElement("div");
-    element.innerHTML = `
-      <div class="stripe-card-element">
-        <div class="card-input">
-          <input type="text" placeholder="Número de tarjeta" maxlength="16" class="card-number">
-          <div class="card-details">
-            <input type="text" placeholder="MM/AA" maxlength="5" class="card-expiry">
-            <input type="text" placeholder="CVC" maxlength="3" class="card-cvc">
-          </div>
-        </div>
-        <div class="card-logos">
-          <span>💳</span>
-          <span>🔒</span>
-        </div>
-      </div>
-    `;
-    return element;
+// Sistema de Autenticación con localStorage
+const AuthSystem = {
+  // Obtener usuario actual
+  getCurrentUser() {
+    return JSON.parse(localStorage.getItem("currentUser")) || null;
+  },
+
+  // Verificar si hay usuario logueado
+  isLoggedIn() {
+    return this.getCurrentUser() !== null;
+  },
+
+  // Registrar nuevo usuario
+  register(email, password, name) {
+    const users = JSON.parse(localStorage.getItem("users")) || [];
+
+    // Verificar si el usuario ya existe
+    if (users.find((user) => user.email === email)) {
+      throw new Error("El usuario ya existe");
+    }
+
+    // Crear nuevo usuario
+    const newUser = {
+      id: Date.now().toString(),
+      email,
+      password, // En una app real esto debería estar encriptado
+      name,
+      createdAt: new Date().toISOString(),
+    };
+
+    users.push(newUser);
+    localStorage.setItem("users", JSON.stringify(users));
+
+    return newUser;
+  },
+
+  // Iniciar sesión
+  login(email, password) {
+    const users = JSON.parse(localStorage.getItem("users")) || [];
+    const user = users.find(
+      (u) => u.email === email && u.password === password
+    );
+
+    if (!user) {
+      throw new Error("Email o contraseña incorrectos");
+    }
+
+    // Guardar usuario actual
+    localStorage.setItem("currentUser", JSON.stringify(user));
+    return user;
+  },
+
+  // Cerrar sesión
+  logout() {
+    localStorage.removeItem("currentUser");
+  },
+
+  // Obtener todos los usuarios (para debugging)
+  getUsers() {
+    return JSON.parse(localStorage.getItem("users")) || [];
   },
 };
 
@@ -202,10 +244,17 @@ document.addEventListener("DOMContentLoaded", function () {
   renderProducts("all");
   setupEventListeners();
   updateCartCount();
+  initializeAuth();
 
   // Inicializar Stripe simulado
   StripeSimulator.initialize();
 });
+
+// Función para inicializar autenticación
+function initializeAuth() {
+  createAuthButton();
+  updateAuthUI();
+}
 
 // Función para inicializar el carousel
 function initializeCarousel() {
@@ -490,30 +539,254 @@ async function showStripeCheckout() {
 
       <div class="payment-section">
         <h3>Información de Pago</h3>
-        <div id="cardElement"></div>
-        <div class="payment-actions">
-          <button id="payButton" class="pay-button">
-            <i class="fas fa-lock"></i>
-            Pagar $${totalAmount.toFixed(2)}
-          </button>
-          <button class="cancel-button" onclick="closeCheckout()">
-            Cancelar
-          </button>
-        </div>
+        <form id="paymentForm">
+          <div class="stripe-card-element">
+            <div class="card-input">
+              <div class="form-group">
+                <label for="cardNumber">Número de Tarjeta</label>
+                <input 
+                  type="text" 
+                  id="cardNumber" 
+                  placeholder="1234 5678 9012 3456" 
+                  maxlength="19"
+                  class="card-number"
+                  oninput="formatCardNumber(this)"
+                >
+                <div class="validation-message" id="cardNumberError"></div>
+              </div>
+              
+              <div class="card-details">
+                <div class="form-group">
+                  <label for="cardExpiry">Fecha de Vencimiento (MM/AA)</label>
+                  <input 
+                    type="text" 
+                    id="cardExpiry" 
+                    placeholder="MM/AA" 
+                    maxlength="5"
+                    class="card-expiry"
+                    oninput="formatExpiryDate(this)"
+                  >
+                  <div class="validation-message" id="cardExpiryError"></div>
+                </div>
+                
+                <div class="form-group">
+                  <label for="cardCvc">CVC</label>
+                  <input 
+                    type="text" 
+                    id="cardCvc" 
+                    placeholder="123" 
+                    maxlength="4"
+                    class="card-cvc"
+                    oninput="validateCvc(this)"
+                  >
+                  <div class="validation-message" id="cardCvcError"></div>
+                </div>
+              </div>
+            </div>
+            <div class="card-logos">
+              <span>💳</span>
+              <span>🔒</span>
+            </div>
+          </div>
+
+          <div class="payment-actions">
+            <button type="submit" id="payButton" class="pay-button">
+              <i class="fas fa-lock"></i>
+              Pagar $${totalAmount.toFixed(2)}
+            </button>
+            <button type="button" class="cancel-button" onclick="closeCheckout()">
+              Cancelar
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   `;
 
-  // Inicializar elemento de tarjeta simulado
-  const cardElement = document.getElementById("cardElement");
-  cardElement.appendChild(StripeSimulator.createCardElement());
-
-  // Configurar evento de pago
+  // Configurar evento del formulario
   document
-    .getElementById("payButton")
-    .addEventListener("click", processPayment);
+    .getElementById("paymentForm")
+    .addEventListener("submit", handlePaymentSubmit);
 
   checkoutModal.style.display = "block";
+
+  // Enfocar el primer campo
+  setTimeout(() => {
+    document.getElementById("cardNumber").focus();
+  }, 300);
+}
+
+// Función para formatear número de tarjeta
+function formatCardNumber(input) {
+  let value = input.value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
+  let formattedValue = "";
+
+  for (let i = 0; i < value.length; i++) {
+    if (i > 0 && i % 4 === 0) {
+      formattedValue += " ";
+    }
+    formattedValue += value[i];
+  }
+
+  input.value = formattedValue;
+  validateCardNumber(input);
+}
+
+// Función para validar número de tarjeta
+function validateCardNumber(input) {
+  const value = input.value.replace(/\s+/g, "");
+  const errorElement = document.getElementById("cardNumberError");
+
+  // Validar que solo contenga números y tenga longitud válida
+  if (!/^\d+$/.test(value)) {
+    errorElement.textContent =
+      "El número de tarjeta solo puede contener números";
+    input.classList.add("error");
+    return false;
+  }
+
+  // Validar longitud (generalmente 16 dígitos, pero algunas tienen 15)
+  if (value.length < 15 || value.length > 16) {
+    errorElement.textContent =
+      "El número de tarjeta debe tener 15 o 16 dígitos";
+    input.classList.add("error");
+    return false;
+  }
+
+  // Validar con algoritmo de Luhn
+  if (!luhnCheck(value)) {
+    errorElement.textContent = "El número de tarjeta no es válido";
+    input.classList.add("error");
+    return false;
+  }
+
+  errorElement.textContent = "";
+  input.classList.remove("error");
+  input.classList.add("valid");
+  return true;
+}
+
+// Algoritmo de Luhn para validar tarjetas
+function luhnCheck(cardNumber) {
+  let sum = 0;
+  let isEven = false;
+
+  for (let i = cardNumber.length - 1; i >= 0; i--) {
+    let digit = parseInt(cardNumber[i]);
+
+    if (isEven) {
+      digit *= 2;
+      if (digit > 9) {
+        digit -= 9;
+      }
+    }
+
+    sum += digit;
+    isEven = !isEven;
+  }
+
+  return sum % 10 === 0;
+}
+
+// Función para formatear fecha de vencimiento
+function formatExpiryDate(input) {
+  let value = input.value.replace(/\D/g, "");
+
+  if (value.length >= 2) {
+    value = value.substring(0, 2) + "/" + value.substring(2, 4);
+  }
+
+  input.value = value;
+  validateExpiryDate(input);
+}
+
+// Función para validar fecha de vencimiento
+function validateExpiryDate(input) {
+  const value = input.value;
+  const errorElement = document.getElementById("cardExpiryError");
+
+  if (!/^\d{2}\/\d{2}$/.test(value)) {
+    errorElement.textContent = "Formato debe ser MM/AA";
+    input.classList.add("error");
+    return false;
+  }
+
+  const [month, year] = value.split("/").map(Number);
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear() % 100;
+  const currentMonth = currentDate.getMonth() + 1;
+
+  // Validar mes
+  if (month < 1 || month > 12) {
+    errorElement.textContent = "Mes debe estar entre 01 y 12";
+    input.classList.add("error");
+    return false;
+  }
+
+  // Validar que no sea una fecha pasada
+  if (year < currentYear || (year === currentYear && month < currentMonth)) {
+    errorElement.textContent = "La tarjeta ha expirado";
+    input.classList.add("error");
+    return false;
+  }
+
+  // Validar que no sea más de 10 años en el futuro
+  if (year > currentYear + 10) {
+    errorElement.textContent = "Fecha de vencimiento no válida";
+    input.classList.add("error");
+    return false;
+  }
+
+  errorElement.textContent = "";
+  input.classList.remove("error");
+  input.classList.add("valid");
+  return true;
+}
+
+// Función para validar CVC
+function validateCvc(input) {
+  const value = input.value;
+  const errorElement = document.getElementById("cardCvcError");
+
+  // Validar que solo contenga números
+  if (!/^\d+$/.test(value)) {
+    errorElement.textContent = "El CVC solo puede contener números";
+    input.classList.add("error");
+    return false;
+  }
+
+  // Validar longitud (3 o 4 dígitos)
+  if (value.length < 3 || value.length > 4) {
+    errorElement.textContent = "El CVC debe tener 3 o 4 dígitos";
+    input.classList.add("error");
+    return false;
+  }
+
+  errorElement.textContent = "";
+  input.classList.remove("error");
+  input.classList.add("valid");
+  return true;
+}
+
+// Función para manejar el envío del formulario de pago
+async function handlePaymentSubmit(event) {
+  event.preventDefault();
+
+  const cardNumber = document.getElementById("cardNumber");
+  const cardExpiry = document.getElementById("cardExpiry");
+  const cardCvc = document.getElementById("cardCvc");
+
+  // Validar todos los campos
+  const isCardNumberValid = validateCardNumber(cardNumber);
+  const isExpiryValid = validateExpiryDate(cardExpiry);
+  const isCvcValid = validateCvc(cardCvc);
+
+  if (!isCardNumberValid || !isExpiryValid || !isCvcValid) {
+    showNotification("Por favor, corrige los errores en el formulario");
+    return;
+  }
+
+  await processPayment();
 }
 
 // Función para procesar el pago
@@ -532,8 +805,20 @@ async function processPayment() {
       0
     );
 
+    // Obtener datos de la tarjeta para simular mejor
+    const cardNumber = document
+      .getElementById("cardNumber")
+      .value.replace(/\s/g, "");
+    const cardLast4 = cardNumber.slice(-4);
+
     // Simular procesamiento de pago
-    const paymentResult = await StripeSimulator.processPayment({}, totalAmount);
+    const paymentResult = await StripeSimulator.processPayment(
+      {
+        last4: cardLast4,
+        brand: getCardBrand(cardNumber),
+      },
+      totalAmount
+    );
 
     // Pago exitoso
     showNotification("¡Pago exitoso! Tu pedido ha sido procesado.");
@@ -555,6 +840,39 @@ async function processPayment() {
   }
 }
 
+// Función para determinar la marca de la tarjeta
+function getCardBrand(cardNumber) {
+  const firstDigit = cardNumber[0];
+  const firstTwoDigits = cardNumber.substring(0, 2);
+
+  if (firstDigit === "4") return "Visa";
+  if (firstTwoDigits >= "51" && firstTwoDigits <= "55") return "MasterCard";
+  if (firstTwoDigits === "34" || firstTwoDigits === "37")
+    return "American Express";
+  if (firstTwoDigits === "36" || firstTwoDigits === "38") return "Diners Club";
+  if (firstTwoDigits === "35") return "JCB";
+  if (firstTwoDigits === "60" || firstTwoDigits === "65") return "Discover";
+
+  return "Unknown";
+}
+
+// Función para cerrar checkout y limpiar validaciones
+function closeCheckout() {
+  document.getElementById("checkoutModal").style.display = "none";
+
+  // Limpiar mensajes de error
+  const errorMessages = document.querySelectorAll(".validation-message");
+  errorMessages.forEach((msg) => (msg.textContent = ""));
+
+  const inputs = document.querySelectorAll(
+    ".card-number, .card-expiry, .card-cvc"
+  );
+  inputs.forEach((input) => {
+    input.classList.remove("error", "valid");
+    input.value = "";
+  });
+}
+
 // Función para mostrar recibo
 function showReceipt(paymentResult) {
   const receiptModal = document.createElement("div");
@@ -573,7 +891,7 @@ function showReceipt(paymentResult) {
   `;
 
   receiptModal.innerHTML = `
-    <div class="modal-content" style="background: var(--card-bg); padding: 2rem; border-radius: 10px; max-width: 500px; width: 90%;">
+    <div class="modal-content" style="background: black; padding: 2rem; border-radius: 10px; max-width: 500px; width: 90%; border: 1px solid var(--primary-color);">
       <div style="text-align: center; margin-bottom: 2rem;">
         <div style="font-size: 3rem; color: #28a745; margin-bottom: 1rem;">✅</div>
         <h2 style="color: var(--text-color); margin-bottom: 1rem;">¡Pago Completado!</h2>
@@ -605,11 +923,6 @@ function showReceipt(paymentResult) {
   `;
 
   document.body.appendChild(receiptModal);
-}
-
-// Función para cerrar checkout
-function closeCheckout() {
-  document.getElementById("checkoutModal").style.display = "none";
 }
 
 // Función para configurar los event listeners
@@ -670,10 +983,20 @@ function setupEventListeners() {
     }
   });
 
-  // Botón de checkout (modificado para usar Stripe)
+  // Botón de checkout - CORREGIDO
   document
     .querySelector(".checkout-btn")
-    .addEventListener("click", showStripeCheckout);
+    .addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Cerrar el modal del carrito primero
+      document.getElementById("cartModal").style.display = "none";
+
+      // Verificar autenticación y mostrar checkout
+      if (!requireAuth()) return;
+      showStripeCheckout();
+    });
 
   // Cerrar checkout modal
   document
@@ -753,169 +1076,621 @@ window.addEventListener("load", () => {
   }
 });
 
-// Agregar estilos CSS para el checkout
-const checkoutStyles = document.createElement("style");
-checkoutStyles.textContent = `
-  .checkout-modal {
-    display: none;
-    position: fixed;
-    z-index: 3500;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.7);
-    backdrop-filter: blur(5px);
+// Funciones de autenticación
+function showAuthModal(mode = "login") {
+  const authModal = document.getElementById("authModal") || createAuthModal();
+  const authContent = document.getElementById("authContent");
+
+  authContent.innerHTML = `
+        <div class="auth-header">
+            <h2>${mode === "login" ? "Iniciar Sesión" : "Registrarse"}</h2>
+            <button class="close-auth" onclick="closeAuthModal()">&times;</button>
+        </div>
+        
+        <div class="auth-body">
+            <form id="authForm" class="auth-form">
+                ${
+                  mode === "register"
+                    ? `
+                <div class="form-group">
+                    <label for="authName">Nombre completo</label>
+                    <input type="text" id="authName" required>
+                    <div class="validation-message" id="authNameError"></div>
+                </div>
+                `
+                    : ""
+                }
+                
+                <div class="form-group">
+                    <label for="authEmail">Email</label>
+                    <input type="email" id="authEmail" required>
+                    <div class="validation-message" id="authEmailError"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="authPassword">Contraseña</label>
+                    <input type="password" id="authPassword" required minlength="6">
+                    <div class="validation-message" id="authPasswordError"></div>
+                </div>
+
+                <div class="auth-actions">
+                    <button type="submit" class="auth-submit-btn">
+                        ${mode === "login" ? "Iniciar Sesión" : "Registrarse"}
+                    </button>
+                    <button type="button" class="auth-switch-btn" onclick="switchAuthMode('${
+                      mode === "login" ? "register" : "login"
+                    }')">
+                        ${
+                          mode === "login"
+                            ? "¿No tienes cuenta? Regístrate"
+                            : "¿Ya tienes cuenta? Inicia Sesión"
+                        }
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+
+  // Configurar evento del formulario
+  document.getElementById("authForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    handleAuthSubmit(mode);
+  });
+
+  authModal.style.display = "block";
+
+  // Enfocar el primer campo
+  setTimeout(() => {
+    const firstInput = document.getElementById(
+      mode === "register" ? "authName" : "authEmail"
+    );
+    firstInput.focus();
+  }, 300);
+}
+
+// Función para crear el modal de auth si no existe
+function createAuthModal() {
+  const authModal = document.createElement("div");
+  authModal.id = "authModal";
+  authModal.className = "auth-modal";
+  authModal.innerHTML = `
+        <div class="auth-content">
+            <div id="authContent"></div>
+        </div>
+    `;
+  document.body.appendChild(authModal);
+  return authModal;
+}
+
+// Función para manejar el envío del formulario de auth
+async function handleAuthSubmit(mode) {
+  const submitBtn = document.querySelector(".auth-submit-btn");
+  const originalText = submitBtn.innerHTML;
+
+  try {
+    // Mostrar loading
+    submitBtn.innerHTML =
+      '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+    submitBtn.disabled = true;
+
+    const email = document.getElementById("authEmail").value;
+    const password = document.getElementById("authPassword").value;
+
+    let user;
+
+    if (mode === "register") {
+      const name = document.getElementById("authName").value;
+      user = AuthSystem.register(email, password, name);
+      showNotification("¡Registro exitoso! Bienvenido/a " + name);
+    } else {
+      user = AuthSystem.login(email, password);
+      showNotification("¡Bienvenido de nuevo, " + user.name + "!");
+    }
+
+    closeAuthModal();
+    updateAuthUI();
+  } catch (error) {
+    showNotification(error.message);
+    submitBtn.innerHTML = originalText;
+    submitBtn.disabled = false;
+  }
+}
+
+// Función para cambiar entre login y registro
+function switchAuthMode(newMode) {
+  showAuthModal(newMode);
+}
+
+// Función para cerrar modal de auth
+function closeAuthModal() {
+  const authModal = document.getElementById("authModal");
+  if (authModal) {
+    authModal.style.display = "none";
   }
 
-  .checkout-content {
-    background: var(--card-bg);
-    margin: 2% auto;
-    padding: 0;
-    border-radius: 15px;
-    width: 90%;
-    max-width: 600px;
-    max-height: 90vh;
-    overflow-y: auto;
-    border: 1px solid var(--border-color);
+  // Limpiar formulario
+  const form = document.getElementById("authForm");
+  if (form) form.reset();
+}
+
+// Función para actualizar la UI según el estado de autenticación
+function updateAuthUI() {
+  const user = AuthSystem.getCurrentUser();
+  const authButton = document.getElementById("authButton");
+
+  if (!authButton) {
+    createAuthButton();
+    return;
   }
 
-  .checkout-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem 2rem;
-    border-bottom: 1px solid var(--border-color);
+  if (user) {
+    authButton.innerHTML = `
+            <i class="fas fa-user"></i>
+            ${user.name}
+            <div class="auth-dropdown">
+                <button onclick="handleLogout()">Cerrar Sesión</button>
+            </div>
+        `;
+    authButton.classList.add("logged-in");
+  } else {
+    authButton.innerHTML = '<i class="fas fa-user"></i> Iniciar Sesión';
+    authButton.classList.remove("logged-in");
+  }
+}
+
+// Función para crear el botón de auth en el header
+function createAuthButton() {
+  const headerActions = document.querySelector(".header-actions");
+  if (!headerActions) return;
+
+  const authButton = document.createElement("div");
+  authButton.id = "authButton";
+  authButton.className = "auth-button";
+  authButton.innerHTML = '<i class="fas fa-user"></i> Iniciar Sesión';
+  authButton.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!AuthSystem.isLoggedIn()) {
+      showAuthModal();
+    }
+  });
+
+  // Insertar antes del carrito
+  const cart = headerActions.querySelector(".cart");
+  if (cart) {
+    headerActions.insertBefore(authButton, cart);
+  } else {
+    headerActions.appendChild(authButton);
   }
 
-  .checkout-header h2 {
-    margin: 0;
-    color: var(--text-color);
-  }
+  updateAuthUI();
+}
 
-  .close-checkout {
-    background: none;
-    border: none;
-    font-size: 2rem;
-    color: var(--secondary-color);
-    cursor: pointer;
-    padding: 0;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+// Función para manejar logout
+function handleLogout() {
+  AuthSystem.logout();
+  showNotification("Sesión cerrada correctamente");
+  updateAuthUI();
+}
 
-  .checkout-body {
-    padding: 2rem;
+// Verificar autenticación requerida para checkout
+function requireAuth() {
+  if (!AuthSystem.isLoggedIn()) {
+    showNotification("Por favor, inicia sesión para continuar con la compra");
+    showAuthModal();
+    return false;
   }
+  return true;
+}
 
-  .order-summary {
-    background: rgba(255,255,255,0.05);
-    padding: 1.5rem;
-    border-radius: 10px;
-    margin-bottom: 2rem;
-  }
+// Agregar estilos CSS
+const authStyles = document.createElement("style");
+authStyles.textContent = `
+    .auth-modal {
+        display: none;
+        position: fixed;
+        z-index: 3500;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.7);
+        backdrop-filter: blur(5px);
+    }
 
-  .checkout-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-  }
+    .auth-content {
+        background: var(--card-bg);
+        margin: 5% auto;
+        padding: 0;
+        border-radius: 15px;
+        width: 90%;
+        max-width: 400px;
+        border: 1px solid var(--border-color);
+        backdrop-filter: blur(20px);
+    }
 
-  .checkout-total {
-    display: flex;
-    justify-content: space-between;
-    padding-top: 1rem;
-    margin-top: 1rem;
-    border-top: 2px solid var(--primary-color);
-    font-size: 1.2rem;
-  }
+    .auth-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--border-color);
+    }
 
-  .payment-section h3 {
-    margin-bottom: 1rem;
-    color: var(--text-color);
-  }
+    .auth-header h2 {
+        margin: 0;
+        color: var(--text-color);
+    }
 
-  .stripe-card-element {
-    background: rgba(255,255,255,0.1);
-    padding: 1.5rem;
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
-    margin-bottom: 1.5rem;
-  }
+    .close-auth {
+        background: none;
+        border: none;
+        font-size: 2rem;
+        color: var(--secondary-color);
+        cursor: pointer;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 
-  .card-input input {
-    width: 100%;
-    padding: 0.75rem;
-    margin-bottom: 1rem;
-    background: rgba(255,255,255,0.1);
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    color: var(--text-color);
-    font-size: 1rem;
-  }
+    .auth-body {
+        padding: 2rem;
+    }
 
-  .card-details {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-  }
+    .auth-form .form-group {
+        margin-bottom: 1.5rem;
+        text-align: left;
+    }
 
-  .card-logos {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    margin-top: 1rem;
-    font-size: 1.5rem;
-  }
+    .auth-form label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: var(--text-color);
+        font-size: 0.9rem;
+    }
 
-  .payment-actions {
-    display: flex;
-    gap: 1rem;
-  }
+    .auth-form input {
+        width: 100%;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid var(--border-color);
+        border-radius: 5px;
+        color: var(--text-color);
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
 
-  .pay-button {
-    flex: 2;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    padding: 1rem 2rem;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1.1rem;
-    transition: all 0.3s ease;
-  }
+    .auth-form input:focus {
+        border-color: var(--primary-color);
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
+    }
 
-  .pay-button:hover:not(:disabled) {
-    background: var(--primary-color-dark);
-    transform: translateY(-2px);
-  }
+    .auth-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
 
-  .pay-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
+    .auth-submit-btn {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+    }
 
-  .cancel-button {
-    flex: 1;
-    background: rgba(255,255,255,0.1);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-    padding: 1rem 2rem;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1.1rem;
-    transition: all 0.3s ease;
-  }
+    .auth-submit-btn:hover:not(:disabled) {
+        background: var(--primary-color-dark);
+        transform: translateY(-2px);
+    }
 
-  .cancel-button:hover {
-    background: rgba(255,255,255,0.2);
-  }
+    .auth-submit-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .auth-switch-btn {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+        padding: 0.8rem 2rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+
+    .auth-switch-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .auth-button {
+        position: relative;
+        cursor: pointer;
+        font-size: 1rem;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 25px;
+        padding: 0.5rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .auth-button:hover {
+        background: rgba(var(--primary-color-rgb), 0.2);
+        border: 1px solid rgba(var(--primary-color-rgb), 0.4);
+        transform: translateY(-2px);
+    }
+
+    .auth-button.logged-in {
+        background: rgba(var(--primary-color-rgb), 0.25);
+        border: 1px solid rgba(var(--primary-color-rgb), 0.4);
+    }
+
+    .auth-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 0.5rem;
+        margin-top: 0.5rem;
+        min-width: 150px;
+        backdrop-filter: blur(15px);
+    }
+
+    .auth-button:hover .auth-dropdown {
+        display: block;
+    }
+
+    .auth-dropdown button {
+        width: 100%;
+        background: none;
+        border: none;
+        color: var(--text-color);
+        padding: 0.5rem 1rem;
+        text-align: left;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background 0.3s ease;
+    }
+
+    .auth-dropdown button:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .validation-message {
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+        min-height: 1rem;
+        color: #dc3545;
+        font-weight: 500;
+    }
+
+    .checkout-modal {
+        display: none;
+        position: fixed;
+        z-index: 3500;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.7);
+        backdrop-filter: blur(5px);
+    }
+
+    .checkout-content {
+        background: var(--card-bg);
+        margin: 2% auto;
+        padding: 0;
+        border-radius: 15px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+        border: 1px solid var(--border-color);
+    }
+
+    .checkout-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .checkout-header h2 {
+        margin: 0;
+        color: var(--text-color);
+    }
+
+    .close-checkout {
+        background: none;
+        border: none;
+        font-size: 2rem;
+        color: var(--secondary-color);
+        cursor: pointer;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .checkout-body {
+        padding: 2rem;
+    }
+
+    .order-summary {
+        background: rgba(255,255,255,0.05);
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+    }
+
+    .checkout-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .checkout-total {
+        display: flex;
+        justify-content: space-between;
+        padding-top: 1rem;
+        margin-top: 1rem;
+        border-top: 2px solid var(--primary-color);
+        font-size: 1.2rem;
+    }
+
+    .payment-section h3 {
+        margin-bottom: 1rem;
+        color: var(--text-color);
+    }
+
+    .stripe-card-element {
+        background: rgba(255,255,255,0.1);
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+        margin-bottom: 1.5rem;
+    }
+
+    .card-input input {
+        width: 100%;
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+        background: rgba(255,255,255,0.1);
+        border: 1px solid var(--border-color);
+        border-radius: 5px;
+        color: var(--text-color);
+        font-size: 1rem;
+    }
+
+    .card-details {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .card-logos {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        font-size: 1.5rem;
+    }
+
+    .payment-actions {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .pay-button {
+        flex: 2;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+    }
+
+    .pay-button:hover:not(:disabled) {
+        background: var(--primary-color-dark);
+        transform: translateY(-2px);
+    }
+
+    .pay-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .cancel-button {
+        flex: 1;
+        background: rgba(255,255,255,0.1);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+        padding: 1rem 2rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+    }
+
+    .cancel-button:hover {
+        background: rgba(255,255,255,0.2);
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+        text-align: left;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: var(--text-color);
+        font-size: 0.9rem;
+    }
+
+    .card-input input {
+        width: 100%;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid var(--border-color);
+        border-radius: 5px;
+        color: var(--text-color);
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .card-input input:focus {
+        border-color: var(--primary-color);
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
+    }
+
+    .card-input input.error {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2);
+    }
+
+    .card-input input.valid {
+        border-color: #28a745;
+        box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.2);
+    }
+
+    .validation-message {
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+        min-height: 1rem;
+    }
+
+    .validation-message:not(:empty) {
+        color: #dc3545;
+        font-weight: 500;
+    }
 `;
-document.head.appendChild(checkoutStyles);
+document.head.appendChild(authStyles);
 
 // Agregar modal de checkout al HTML si no existe
 if (!document.getElementById("checkoutModal")) {
