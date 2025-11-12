@@ -1,4 +1,4 @@
-// Datos de productos
+// Datos de productos (con imágenes locales)
 const products = [
   {
     id: 1,
@@ -123,6 +123,78 @@ let currentTheme = localStorage.getItem("theme") || "light";
 let currentSlide = 0;
 let carouselInterval;
 
+// Simulación de Stripe
+const StripeSimulator = {
+  // Simular inicialización de Stripe
+  async initialize() {
+    console.log("Stripe inicializado (simulación)");
+    return true;
+  },
+
+  // Simular creación de sesión de pago
+  async createCheckoutSession(cartItems) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const session = {
+          id: `cs_sim_${Date.now()}`,
+          url: "#checkout-modal",
+          amount: cartItems.reduce(
+            (total, item) => total + item.price * item.quantity,
+            0
+          ),
+        };
+        resolve(session);
+      }, 1000);
+    });
+  },
+
+  // Simular procesamiento de pago
+  async processPayment(paymentMethod, amount) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        // Simular éxito del pago (80% de probabilidad)
+        const success = Math.random() > 0.2;
+
+        if (success) {
+          resolve({
+            id: `pi_sim_${Date.now()}`,
+            status: "succeeded",
+            amount: amount,
+            receipt_url: "#receipt",
+          });
+        } else {
+          reject(
+            new Error(
+              "El pago fue rechazado. Por favor, intenta con otro método de pago."
+            )
+          );
+        }
+      }, 2000);
+    });
+  },
+
+  // Simular elementos de Stripe para tarjeta
+  createCardElement() {
+    const element = document.createElement("div");
+    element.innerHTML = `
+      <div class="stripe-card-element">
+        <div class="card-input">
+          <input type="text" placeholder="Número de tarjeta" maxlength="16" class="card-number">
+          <div class="card-details">
+            <input type="text" placeholder="MM/AA" maxlength="5" class="card-expiry">
+            <input type="text" placeholder="CVC" maxlength="3" class="card-cvc">
+          </div>
+        </div>
+        <div class="card-logos">
+          <span>💳</span>
+          <span>🔒</span>
+        </div>
+      </div>
+    `;
+    return element;
+  },
+};
+
 // Inicialización
 document.addEventListener("DOMContentLoaded", function () {
   initializeTheme();
@@ -130,6 +202,9 @@ document.addEventListener("DOMContentLoaded", function () {
   renderProducts("all");
   setupEventListeners();
   updateCartCount();
+
+  // Inicializar Stripe simulado
+  StripeSimulator.initialize();
 });
 
 // Función para inicializar el carousel
@@ -137,7 +212,6 @@ function initializeCarousel() {
   const carouselContainer = document.getElementById("carouselContainer");
   const carouselDots = document.getElementById("carouselDots");
 
-  // Crear slides para cada producto
   bestSellers.forEach((product, index) => {
     const slide = document.createElement("div");
     slide.className = `carousel-slide ${index === 0 ? "active" : ""}`;
@@ -150,14 +224,12 @@ function initializeCarousel() {
     `;
     carouselContainer.appendChild(slide);
 
-    // Crear dots para navegación
     const dot = document.createElement("button");
     dot.className = `carousel-dot ${index === 0 ? "active" : ""}`;
     dot.addEventListener("click", () => goToSlide(index));
     carouselDots.appendChild(dot);
   });
 
-  // Iniciar rotación automática
   startCarousel();
 }
 
@@ -166,17 +238,13 @@ function goToSlide(slideIndex) {
   const slides = document.querySelectorAll(".carousel-slide");
   const dots = document.querySelectorAll(".carousel-dot");
 
-  // Remover clase active de todos los slides y dots
   slides.forEach((slide) => slide.classList.remove("active"));
   dots.forEach((dot) => dot.classList.remove("active"));
 
-  // Agregar clase active al slide y dot actual
   slides[slideIndex].classList.add("active");
   dots[slideIndex].classList.add("active");
 
   currentSlide = slideIndex;
-
-  // Reiniciar el intervalo
   resetCarousel();
 }
 
@@ -195,7 +263,7 @@ function prevSlide() {
 
 // Función para iniciar la rotación automática
 function startCarousel() {
-  carouselInterval = setInterval(nextSlide, 5000); // Cambiar cada 5 segundos
+  carouselInterval = setInterval(nextSlide, 5000);
 }
 
 // Función para reiniciar el carousel
@@ -232,9 +300,7 @@ function updateThemeIcon() {
 function renderProducts(filters = {}) {
   const productsGrid = document.getElementById("productsGrid");
 
-  // Aplicar todos los filtros
   const filteredProducts = products.filter((product) => {
-    // Si no hay filtros o si el filtro es "all", mostrar todos los productos
     if (
       Object.keys(filters).length === 0 ||
       (filters.category && filters.category === "all")
@@ -242,21 +308,17 @@ function renderProducts(filters = {}) {
       return true;
     }
 
-    // Verificar cada filtro
     for (const [key, value] of Object.entries(filters)) {
-      // Si el filtro es "categories" (array de categorías seleccionadas)
       if (key === "categories" && Array.isArray(value) && value.length > 0) {
         if (!value.includes(product.category)) {
           return false;
         }
       }
 
-      // Si el filtro es "category" individual
       if (key === "category" && value !== "all" && product.category !== value) {
         return false;
       }
 
-      // Si el filtro es "priceRange"
       if (key === "priceRange") {
         const [min, max] = value.split("-").map(Number);
         if (max && (product.price < min || product.price > max)) {
@@ -267,7 +329,6 @@ function renderProducts(filters = {}) {
         }
       }
 
-      // Si el filtro es "search"
       if (key === "search" && value.trim() !== "") {
         const searchTerm = value.toLowerCase();
         if (
@@ -278,7 +339,6 @@ function renderProducts(filters = {}) {
         }
       }
 
-      // Si el filtro es "inStock"
       if (key === "inStock" && value && !product.inStock) {
         return false;
       }
@@ -287,7 +347,6 @@ function renderProducts(filters = {}) {
     return true;
   });
 
-  // Mostrar mensaje si no hay productos
   if (filteredProducts.length === 0) {
     productsGrid.innerHTML = `
       <div class="no-products">
@@ -297,38 +356,25 @@ function renderProducts(filters = {}) {
     return;
   }
 
-  // Renderizar productos
   productsGrid.innerHTML = filteredProducts
     .map(
       (product) => `
         <div class="product-card">
-            <div class="product-image">
-                <img src="${product.image}" alt="${product.name}">
-            </div>
-            <div class="product-info">
-                <h3 class="product-title">${product.name}</h3>
-                <p class="product-description">${product.description}</p>
-                <div class="product-price">$${product.price}</div>
-                <button class="add-to-cart" onclick="addToCart(${product.id})">
-                    Agregar al carrito
-                </button>
-            </div>
+          <div class="product-image">
+            <img src="${product.image}" alt="${product.name}">
+          </div>
+          <div class="product-info">
+            <h3 class="product-title">${product.name}</h3>
+            <p class="product-description">${product.description}</p>
+            <div class="product-price">$${product.price}</div>
+            <button class="add-to-cart" onclick="addToCart(${product.id})">
+              Agregar al carrito
+            </button>
+          </div>
         </div>
-    `
+      `
     )
     .join("");
-}
-
-// Funcion para quitar todos los filtros
-function clearAllFilters() {
-  document.querySelectorAll(".filter-btn").forEach((btn) => {
-    btn.classList.remove("active");
-  });
-  const allButton = document.querySelector('.filter-btn[data-category="all"]');
-  if (allButton) {
-    allButton.classList.add("active");
-  }
-  renderProducts({ category: "all" });
 }
 
 // Función para agregar productos al carrito
@@ -370,18 +416,18 @@ function showCart() {
     cartItems.innerHTML = cart
       .map(
         (item) => `
-            <div class="cart-item">
-                <div class="cart-item-image">
-                    <img src="${item.image}" alt="${item.name}">
-                </div>
-                <div class="cart-item-info">
-                    <div class="cart-item-title">${item.name}</div>
-                    <div class="cart-item-price">$${item.price} x ${item.quantity}</div>
-                </div>
-                <button class="remove-item" onclick="removeFromCart(${item.id})">
-                    <i class="fas fa-trash"></i>
-                </button>
+          <div class="cart-item">
+            <div class="cart-item-image">
+              <img src="${item.image}" alt="${item.name}">
             </div>
+            <div class="cart-item-info">
+              <div class="cart-item-title">${item.name}</div>
+              <div class="cart-item-price">$${item.price} x ${item.quantity}</div>
+            </div>
+            <button class="remove-item" onclick="removeFromCart(${item.id})">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
         `
       )
       .join("");
@@ -403,6 +449,169 @@ function removeFromCart(productId) {
   showCart();
 }
 
+// Función para mostrar el checkout de Stripe
+async function showStripeCheckout() {
+  if (cart.length === 0) {
+    showNotification("El carrito está vacío");
+    return;
+  }
+
+  const checkoutModal = document.getElementById("checkoutModal");
+  const checkoutContent = document.getElementById("checkoutContent");
+  const totalAmount = cart.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
+  // Crear interfaz de checkout
+  checkoutContent.innerHTML = `
+    <div class="checkout-header">
+      <h2>Finalizar Compra</h2>
+      <button class="close-checkout" onclick="closeCheckout()">&times;</button>
+    </div>
+    
+    <div class="checkout-body">
+      <div class="order-summary">
+        <h3>Resumen del Pedido</h3>
+        ${cart
+          .map(
+            (item) => `
+          <div class="checkout-item">
+            <span>${item.name} x${item.quantity}</span>
+            <span>$${(item.price * item.quantity).toFixed(2)}</span>
+          </div>
+        `
+          )
+          .join("")}
+        <div class="checkout-total">
+          <strong>Total: $${totalAmount.toFixed(2)}</strong>
+        </div>
+      </div>
+
+      <div class="payment-section">
+        <h3>Información de Pago</h3>
+        <div id="cardElement"></div>
+        <div class="payment-actions">
+          <button id="payButton" class="pay-button">
+            <i class="fas fa-lock"></i>
+            Pagar $${totalAmount.toFixed(2)}
+          </button>
+          <button class="cancel-button" onclick="closeCheckout()">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Inicializar elemento de tarjeta simulado
+  const cardElement = document.getElementById("cardElement");
+  cardElement.appendChild(StripeSimulator.createCardElement());
+
+  // Configurar evento de pago
+  document
+    .getElementById("payButton")
+    .addEventListener("click", processPayment);
+
+  checkoutModal.style.display = "block";
+}
+
+// Función para procesar el pago
+async function processPayment() {
+  const payButton = document.getElementById("payButton");
+  const originalText = payButton.innerHTML;
+
+  try {
+    // Mostrar loading
+    payButton.innerHTML =
+      '<i class="fas fa-spinner fa-spin"></i> Procesando pago...';
+    payButton.disabled = true;
+
+    const totalAmount = cart.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+
+    // Simular procesamiento de pago
+    const paymentResult = await StripeSimulator.processPayment({}, totalAmount);
+
+    // Pago exitoso
+    showNotification("¡Pago exitoso! Tu pedido ha sido procesado.");
+    closeCheckout();
+
+    // Limpiar carrito
+    cart = [];
+    updateCartCount();
+    document.getElementById("cartModal").style.display = "none";
+
+    // Mostrar recibo
+    setTimeout(() => {
+      showReceipt(paymentResult);
+    }, 1000);
+  } catch (error) {
+    showNotification(error.message);
+    payButton.innerHTML = originalText;
+    payButton.disabled = false;
+  }
+}
+
+// Función para mostrar recibo
+function showReceipt(paymentResult) {
+  const receiptModal = document.createElement("div");
+  receiptModal.className = "modal";
+  receiptModal.style.cssText = `
+    display: flex;
+    position: fixed;
+    z-index: 4000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+  `;
+
+  receiptModal.innerHTML = `
+    <div class="modal-content" style="background: var(--card-bg); padding: 2rem; border-radius: 10px; max-width: 500px; width: 90%;">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <div style="font-size: 3rem; color: #28a745; margin-bottom: 1rem;">✅</div>
+        <h2 style="color: var(--text-color); margin-bottom: 1rem;">¡Pago Completado!</h2>
+        <p style="color: var(--secondary-color);">Tu pedido ha sido procesado exitosamente</p>
+      </div>
+      
+      <div style="background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+          <span>ID de transacción:</span>
+          <span style="font-family: monospace;">${paymentResult.id}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+          <span>Total pagado:</span>
+          <span style="font-weight: bold;">$${paymentResult.amount.toFixed(
+            2
+          )}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>Estado:</span>
+          <span style="color: #28a745;">${paymentResult.status}</span>
+        </div>
+      </div>
+      
+      <button onclick="this.closest('.modal').remove()" 
+              style="width: 100%; padding: 1rem; background: var(--primary-color); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem;">
+        Continuar Comprando
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(receiptModal);
+}
+
+// Función para cerrar checkout
+function closeCheckout() {
+  document.getElementById("checkoutModal").style.display = "none";
+}
+
 // Función para configurar los event listeners
 function setupEventListeners() {
   // Botón de tema
@@ -413,7 +622,6 @@ function setupEventListeners() {
     btn.addEventListener("click", function () {
       const isAllButton = this.dataset.category === "all";
 
-      // Si se hace click en "todos", desactivar otros filtros y activar solo "todos"
       if (isAllButton) {
         document
           .querySelectorAll(".filter-btn")
@@ -423,7 +631,6 @@ function setupEventListeners() {
         return;
       }
 
-      // Si se hace click en otro filtro, desactivar "todos" si estaba activo
       const allButton = document.querySelector(
         '.filter-btn[data-category="all"]'
       );
@@ -431,27 +638,21 @@ function setupEventListeners() {
         allButton.classList.remove("active");
       }
 
-      // Toggle la clase active en el botón clickeado
       this.classList.toggle("active");
 
-      // Obtener todos los botones activos (excluyendo "todos")
       const activeButtons = document.querySelectorAll(
         '.filter-btn.active:not([data-category="all"])'
       );
 
-      // Si no hay botones activos después de toggle, activar "todos" por defecto
       if (activeButtons.length === 0) {
         allButton.classList.add("active");
         renderProducts({ category: "all" });
         return;
       }
 
-      // Recopilar todas las categorías seleccionadas
       const selectedCategories = Array.from(activeButtons).map(
         (btn) => btn.dataset.category
       );
-
-      // Llamar a renderProducts con el array de categorías
       renderProducts({ categories: selectedCategories });
     });
   });
@@ -469,20 +670,17 @@ function setupEventListeners() {
     }
   });
 
-  // Botón de checkout
+  // Botón de checkout (modificado para usar Stripe)
   document
     .querySelector(".checkout-btn")
-    .addEventListener("click", function () {
-      if (cart.length > 0) {
-        alert(
-          "Gracias por tu compra! Total: $" +
-            cart
-              .reduce((sum, item) => sum + item.price * item.quantity, 0)
-              .toFixed(2)
-        );
-        cart = [];
-        updateCartCount();
-        document.getElementById("cartModal").style.display = "none";
+    .addEventListener("click", showStripeCheckout);
+
+  // Cerrar checkout modal
+  document
+    .getElementById("checkoutModal")
+    .addEventListener("click", function (e) {
+      if (e.target === this) {
+        closeCheckout();
       }
     });
 
@@ -530,22 +728,18 @@ function showNotification(message) {
 
 // Seleccionar el header
 const header = document.querySelector(".header");
-
-// Variable para guardar la posición anterior del scroll
 let lastScrollY = window.scrollY;
 
 // Función para manejar el scroll
 function handleScroll() {
   const currentScrollY = window.scrollY;
 
-  // Si el scroll es mayor a 100px, hacer el header transparente
   if (currentScrollY > 100) {
     header.classList.add("transparent");
   } else {
     header.classList.remove("transparent");
   }
 
-  // Actualizar la última posición del scroll
   lastScrollY = currentScrollY;
 }
 
@@ -558,3 +752,180 @@ window.addEventListener("load", () => {
     header.classList.add("transparent");
   }
 });
+
+// Agregar estilos CSS para el checkout
+const checkoutStyles = document.createElement("style");
+checkoutStyles.textContent = `
+  .checkout-modal {
+    display: none;
+    position: fixed;
+    z-index: 3500;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+    backdrop-filter: blur(5px);
+  }
+
+  .checkout-content {
+    background: var(--card-bg);
+    margin: 2% auto;
+    padding: 0;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+  }
+
+  .checkout-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .checkout-header h2 {
+    margin: 0;
+    color: var(--text-color);
+  }
+
+  .close-checkout {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: var(--secondary-color);
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .checkout-body {
+    padding: 2rem;
+  }
+
+  .order-summary {
+    background: rgba(255,255,255,0.05);
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+  }
+
+  .checkout-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .checkout-total {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 1rem;
+    margin-top: 1rem;
+    border-top: 2px solid var(--primary-color);
+    font-size: 1.2rem;
+  }
+
+  .payment-section h3 {
+    margin-bottom: 1rem;
+    color: var(--text-color);
+  }
+
+  .stripe-card-element {
+    background: rgba(255,255,255,0.1);
+    padding: 1.5rem;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+  }
+
+  .card-input input {
+    width: 100%;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    color: var(--text-color);
+    font-size: 1rem;
+  }
+
+  .card-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .card-logos {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    font-size: 1.5rem;
+  }
+
+  .payment-actions {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .pay-button {
+    flex: 2;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+  }
+
+  .pay-button:hover:not(:disabled) {
+    background: var(--primary-color-dark);
+    transform: translateY(-2px);
+  }
+
+  .pay-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .cancel-button {
+    flex: 1;
+    background: rgba(255,255,255,0.1);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+  }
+
+  .cancel-button:hover {
+    background: rgba(255,255,255,0.2);
+  }
+`;
+document.head.appendChild(checkoutStyles);
+
+// Agregar modal de checkout al HTML si no existe
+if (!document.getElementById("checkoutModal")) {
+  const checkoutModal = document.createElement("div");
+  checkoutModal.id = "checkoutModal";
+  checkoutModal.className = "checkout-modal";
+  checkoutModal.innerHTML = `
+    <div class="checkout-content">
+      <div id="checkoutContent"></div>
+    </div>
+  `;
+  document.body.appendChild(checkoutModal);
+}
