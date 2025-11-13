@@ -893,7 +893,6 @@ function showReceipt(paymentResult) {
   receiptModal.innerHTML = `
     <div class="modal-content" style="background: black; padding: 2rem; border-radius: 10px; max-width: 500px; width: 90%; border: 1px solid var(--primary-color);">
       <div style="text-align: center; margin-bottom: 2rem;">
-        <div style="font-size: 3rem; color: #28a745; margin-bottom: 1rem;">✅</div>
         <h2 style="color: var(--text-color); margin-bottom: 1rem;">¡Pago Completado!</h2>
         <p style="color: var(--secondary-color);">Tu pedido ha sido procesado exitosamente</p>
       </div>
@@ -1879,7 +1878,7 @@ function showReceipt(paymentResult, purchase) {
   `;
 
   receiptModal.innerHTML = `
-    <div class="modal-content" style="background: var(--card-bg); padding: 2rem; border-radius: 10px; max-width: 500px; width: 90%; border: 1px solid var(--border-color);">
+    <div class="modal-content" style="background: black; padding: 2rem; border-radius: 10px; max-width: 500px; width: 90%; border: 1px solid var(--primary-color);">
       <div style="text-align: center; margin-bottom: 2rem;">
         <div style="font-size: 3rem; color: #28a745; margin-bottom: 1rem;">✅</div>
         <h2 style="color: var(--text-color); margin-bottom: 1rem;">¡Pago Completado!</h2>
@@ -1959,7 +1958,7 @@ function showUserProfile() {
         <h3>Estadísticas de Compras</h3>
         <div class="stats-grid">
           <div class="stat-card">
-            <div class="stat-icon">🛒</div>
+            <div class="stat-icon">$</div>
             <div class="stat-info">
               <div class="stat-number">${userStats.totalPurchases}</div>
               <div class="stat-label">Compras Totales</div>
@@ -1972,13 +1971,7 @@ function showUserProfile() {
               <div class="stat-label">Total Gastado</div>
             </div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon">⭐</div>
-            <div class="stat-info">
-              <div class="stat-number">${userStats.favoriteCategory}</div>
-              <div class="stat-label">Categoría Favorita</div>
-            </div>
-          </div>
+          
         </div>
       </div>
 
@@ -2072,7 +2065,7 @@ function showPurchaseDetails(purchaseId) {
   `;
 
   detailsModal.innerHTML = `
-    <div class="modal-content" style="background: var(--card-bg); padding: 2rem; border-radius: 10px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; border: 1px solid var(--border-color);">
+    <div class="modal-content" style="background: black; padding: 2rem; border-radius: 10px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; border: 1px solid var(--primary-color);">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
         <h2 style="color: var(--text-color); margin: 0;">Detalles de la Compra</h2>
         <button onclick="this.closest('.modal').remove()" style="background: none; border: none; font-size: 1.5rem; color: var(--secondary-color); cursor: pointer;">&times;</button>
